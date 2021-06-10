@@ -17,6 +17,7 @@ import os
 import Ui_dialog_fuzz_v2 as fuzzDialogPY
 import Ui_dialog_seed_v5 as seedDialogPY
 import Ui_dialog_selectTarget as targetDialogPY
+import Ui_dialog_selectStruct as structDialogPY
 import staticAnalysis as sa
 
 import instrument as ins
@@ -164,7 +165,8 @@ class Ui_MainWindow(object):
 
         # 以下为手写内容
         self.startFuzzBtn.clicked.connect(self.popFuzzDialog)
-        self.popSeedDialogBtn.clicked.connect(self.popSeedDialog)
+        # self.popSeedDialogBtn.clicked.connect(self.popSeedDialog)
+        self.popSeedDialogBtn.clicked.connect(self.popStructDialog)
         self.chooseCBtn.clicked.connect(self.chooseCFile)
         self.chooseHBtn.clicked.connect(self.chooseHFile)
         self.SAByCppcheckBtn.clicked.connect(self.SAByCppcheck)
@@ -306,11 +308,25 @@ class Ui_MainWindow(object):
                 self.targetSetInfo.append("被测文件不存在!")
                 return
         self.targetDialog = QtWidgets.QDialog()
-        self.uiTarget =targetDialogPY.Ui_Dialog()
+        self.uiTarget = targetDialogPY.Ui_Dialog()
         self.uiTarget.setupUi(self.targetDialog)
         self.targetDialog.show()
         self.uiTarget.setValues(ui,source_loc,[])
         # self.uiFuzz.startFuzz(source_loc,ui,self.uiFuzz,self.uiSeed)
+    
+    '''
+    @description: 弹出选择输入结构体的界面，通过选择结构体来得知初始输入的格式
+    @param {*} self 需要将header_loc发送给选择结构体的界面。header_loc是列表
+    @return {*}
+    '''
+    def popStructDialog(self):
+        header_loc = self.HFileLoc.toPlainText()
+        header_loc = header_loc.split("\n")
+        self.structDialog = QtWidgets.QDialog()
+        self.uiStruct = structDialogPY.Ui_Dialog()
+        self.uiStruct.setupUi(self.structDialog)
+        self.structDialog.show()
+        self.uiStruct.setValues(header_loc)
     
     def SAByCppcheck(self):
         self.targetSetInfo.clear()

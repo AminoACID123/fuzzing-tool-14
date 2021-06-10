@@ -157,7 +157,9 @@ def getAllStruct(header_loc):
             if isinstance(decl.type, pycparser.c_ast.FuncDecl):
                 continue
             allStruct.append(decl.name)
-    return allStruct
+    result = []
+    [result.append(s) for s in allStruct if not s in result]
+    return result
 
 '''
 @description: 获取一个结构体的数据内容
@@ -316,5 +318,4 @@ if __name__ == "__main__":
     # print(analyzeHeader(header_loc2))
     allStruct = getAllStruct(header_loc1)
     structInfo = getOneStruct(header_loc1, "Datagram", "", allStruct)
-    print("getOneStruct:\n", structInfo)
-    # test(header_loc1)
+    print("getOneStruct:\n", "\n".join(structInfo))
