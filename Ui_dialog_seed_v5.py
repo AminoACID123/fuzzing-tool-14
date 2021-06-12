@@ -1,7 +1,7 @@
 '''
 Author: 金昊宸
 Date: 2021-04-22 14:26:43
-LastEditTime: 2021-06-03 15:54:09
+LastEditTime: 2021-06-12 14:38:51
 Description:
 '''
 # -*- coding: utf-8 -*-
@@ -26,6 +26,8 @@ import os
 import staticAnalysis as sa
 import random
 import re
+
+import public
 
 # 传入数据结构-start
 structDict = {
@@ -255,18 +257,26 @@ class Ui_Dialog(object):
                 if 'checkBox' in val.keys():
                     del val['checkBox']
     def getRanNum(self,lower,upper):
-        return round(random.uniform(lower, upper), 2)
+        return int(round(random.uniform(lower, upper), 2))
 
     def getBitsize(self,variable):
         if ":" in variable:
             return int(re.sub(" ", "", variable.split(":")[1]))
         else:
-            return 10
+            return 7
         
-
-    # 根据传入的头文件路径分析头文件
-    def initStructDict(self, header_loc, readJSON):
+    '''
+    @description:  根据传入的路径分析头文件，或直接读取现有的json文件
+    @param {*} self
+    @param {*} header_loc 列表，其中存储了所有头文件的位置
+    @param {*} readJSON 是否读取已有的json
+    @param {*} struct 选择的结构体名称
+    @param {*} allStruct 列表，存储了所有结构体的名称
+    @return {*}
+    '''
+    def initStructDict(self, header_loc, readJSON, struct, allStruct):
         self.header_loc = header_loc
+        self.struct = struct
         global structDict
         structDict.clear()
         if readJSON:
@@ -274,17 +284,16 @@ class Ui_Dialog(object):
                 tempDict = json.load(f)
             structDict = tempDict
         else:
-            header_info = sa.analyzeHeader(header_loc)
+            # structInfo是一个List, 存储了可设置初始值的成员变量
+            structInfo = sa.getOneStruct(header_loc, struct, "", allStruct)
+            print(structInfo)
             tempDict = {}
-            for i in range(len(header_info)):
-                tempDict.clear()
-                for j in range(1,len(header_info[i])):
-                    tempDict[header_info[i][j]] = {"value": None, "lower": 0, "upper": 999, "instrument": False, "mutation": False, "bitsize": 8}
-                    tempDict[header_info[i][j]]["bitsize"] = self.getBitsize(header_info[i][j])
-                    tempDict[header_info[i][j]]["upper"] = 2**tempDict[header_info[i][j]]["bitsize"] - 1
-                structDict[header_info[i][0]] = tempDict.copy()
-        # print("initStructDict-----"+str(structDict))
-        # print("==================================================")
+            # 分析并设置structDict的值
+            for i in range(1, len(structInfo)):
+                tempDict[structInfo[i]] = {"value": None, "lower": 0, "upper": 999, "instrument": False, "mutation": False, "bitsize": 8}
+                tempDict[structInfo[i]]["bitsize"] = self.getBitsize(structInfo[i])
+                tempDict[structInfo[i]]["upper"] = 2**tempDict[structInfo[i]]["bitsize"] - 1
+            structDict[struct] = tempDict
         # 设置Table
         self.setTableContent(structDict)
     # 结束
