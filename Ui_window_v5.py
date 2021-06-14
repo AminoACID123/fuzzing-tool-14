@@ -177,9 +177,6 @@ class Ui_MainWindow(object):
         self.timeoutLEdit.setValidator(QtGui.QRegExpValidator(regExp1))
         regExp2 = QtCore.QRegExp("^\\d+$")
         self.stopByTCNum.setValidator(QtGui.QRegExpValidator(regExp2))
-        self.seedDialog = QtWidgets.QDialog()
-        self.uiSeed = seedDialogPY.Ui_Dialog()
-        self.uiSeed.setupUi(self.seedDialog)
         # 手写内容结束
 
         self.retranslateUi(MainWindow)
@@ -290,8 +287,8 @@ class Ui_MainWindow(object):
                 headerNotExistBox.exec_()
                 return
         headerMsgBox = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Question, '发现JSON文件', '发现structDict.json，是否读取？')
-        yes = headerMsgBox.addButton('确定', QtWidgets.QMessageBox.YesRole)
-        no = headerMsgBox.addButton('取消', QtWidgets.QMessageBox.NoRole)
+        yes = headerMsgBox.addButton('是', QtWidgets.QMessageBox.YesRole)
+        no = headerMsgBox.addButton('否', QtWidgets.QMessageBox.NoRole)
         if os.path.exists(re.sub(header_loc[0].split("\\")[-1],"",header_loc[0]) + "\\structDict.json"):
             headerMsgBox.exec_()
             if headerMsgBox.clickedButton() == yes:
@@ -299,6 +296,11 @@ class Ui_MainWindow(object):
         self.seedDialog.show()
         self.uiSeed.initStructDict(header_loc,readJSON)
     
+    '''
+    @description: 弹出一个dialog, 其中显示了c中所有的函数, 以让用户选择目标
+    @param {*} self
+    @return {*}
+    '''
     def popTargetDialog(self):
         self.targetSetInfo.clear()
         source_loc = self.CFileLoc.toPlainText()
@@ -322,11 +324,37 @@ class Ui_MainWindow(object):
     def popStructDialog(self):
         header_loc = self.HFileLoc.toPlainText()
         header_loc = header_loc.split("\n")
-        self.structDialog = QtWidgets.QDialog()
-        self.uiStruct = structDialogPY.Ui_Dialog()
-        self.uiStruct.setupUi(self.structDialog)
-        self.structDialog.show()
-        self.uiStruct.setValues(header_loc)
+        # 查看是否已存在structDict.json
+        headerMsgBox = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Question, '发现JSON文件', '发现structDict.json，是否读取？')
+        yes = headerMsgBox.addButton('确定', QtWidgets.QMessageBox.YesRole)
+        no = headerMsgBox.addButton('取消', QtWidgets.QMessageBox.NoRole)
+        readJSON = False
+        # 查看header路径是否正确
+        for header in header_loc:
+            if not os.path.exists(header):
+                self.HFileLoc.setText("头文件不存在!")
+                headerNotExistBox = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Warning, "警告", "头文件不存在！")
+                headerNotExistBox.exec_()
+                return
+        if os.path.exists(re.sub(header_loc[0].split("\\")[-1],"",header_loc[0]) + "in\\structDict.json"):
+            headerMsgBox.exec_()
+            if headerMsgBox.clickedButton() == yes:
+                readJSON = True
+        # 如果读取现有的struct.json
+        if readJSON:
+            self.seedDialog = QtWidgets.QDialog()
+            self.uiSeed = seedDialogPY.Ui_Dialog()
+            self.uiSeed.setupUi(self.seedDialog)
+            self.seedDialog.show()
+            # param_struct和["param","allStruct"]只是用来占位置的，因为如果读取json的话并不需要这两个变量
+            self.uiSeed.initStructDict(header_loc, readJSON, "param_struct", ["param","allStruct"])
+        # 如果不读取现有的struct.json, 或者没有struct.json的话
+        else:
+            self.structDialog = QtWidgets.QDialog()
+            self.uiStruct = structDialogPY.Ui_Dialog()
+            self.uiStruct.setupUi(self.structDialog)
+            self.structDialog.show()
+            self.uiStruct.setValues(header_loc)
     
     def SAByCppcheck(self):
         self.targetSetInfo.clear()

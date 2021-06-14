@@ -2,7 +2,7 @@
 Author: Radon
 Date: 2021-05-16 10:03:05
 LastEditors: Radon
-LastEditTime: 2021-06-12 14:43:25
+LastEditTime: 2021-06-14 14:55:30
 Description: Some pulic function
 '''
 
@@ -71,7 +71,9 @@ def getAllFunctions(source_locs):
 '''
 def genSeed(header_loc, struct, structDict):
     # 先设置好相关的位置信息
-    root = re.sub(header_loc[0].split("\\")[-1],"",header_loc[0])
+    root = re.sub(header_loc[0].split("\\")[-1],"",header_loc[0]) + "\\in\\"
+    if not os.path.exists(root):
+        os.mkdir(root)
     genSeedPath = root + "genSeed.cpp"
     # 开始写代码，先include相关内容
     code = "#include <iostream>\n#include <Windows.h>\n"
@@ -96,9 +98,14 @@ def genSeed(header_loc, struct, structDict):
     f = open(genSeedPath, mode="w")
     f.write(code)
     f.close()
-    cmd = "g++ -o " + root + "genSeed.exe " + genSeedPath + "\n"
-    cmd += root + "genSeed.exe"
-    os.system(cmd)
+    # 编辑命令集合
+    cmds = []
+    cmds.append("g++ -o genSeed.exe genSeed.cpp")
+    cmds.append("genSeed.exe")
+    # 切换目录并执行命令
+    os.chdir(root)
+    for cmd in cmds:
+        os.system(cmd)
 
 '''
 @description: 模拟按下ESC键

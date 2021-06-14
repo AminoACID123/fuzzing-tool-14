@@ -1,7 +1,7 @@
 '''
 Author: 金昊宸
 Date: 2021-04-22 14:26:43
-LastEditTime: 2021-06-12 14:38:51
+LastEditTime: 2021-06-14 15:49:35
 Description:
 '''
 # -*- coding: utf-8 -*-
@@ -89,18 +89,27 @@ class Ui_Dialog(object):
 
     def setTable(self, Dialog):  # 界面函数
         global structDict
+
         # 表格-start
         self.structTable = QtWidgets.QTableWidget(Dialog)
         self.structTable.setGeometry(QtCore.QRect(10, 10, 880, 480))
         self.structTable.setColumnCount(8)
-
         # 表格-end
-        # 退出按钮-start
+
+        # 保存按钮-start
         self.determineBtn = QtWidgets.QPushButton(Dialog)
-        self.determineBtn.setGeometry(QtCore.QRect(10, 500, 880, 40))
-        self.determineBtn.setText("保存")
+        self.determineBtn.setGeometry(QtCore.QRect(10, 500, 435, 40))
+        self.determineBtn.setText("保存为JSON")
         self.determineBtn.clicked.connect(self.saveData)
-        # 退出按钮-end
+        # 保存按钮-end
+
+        # 生成按钮-start
+        self.generateBtn = QtWidgets.QPushButton(Dialog)
+        self.generateBtn.setGeometry(QtCore.QRect(455, 500, 435, 40))
+        self.generateBtn.setText("生成种子文件")
+        self.generateBtn.clicked.connect(self.genSeed)
+        # 生成按钮-end
+
         self.setTableContent(structDict)
     
     # 发送一个新的dict，设置表格内容
@@ -141,6 +150,7 @@ class Ui_Dialog(object):
                     i, 6, self.varCheckBoxItem(val['mutation'], structKey, key))  # 变异
                 self.structTable.setItem(
                     i, 7, self.enableeditItem(str(val["bitsize"])))  # 位
+                
                 i += 1
     # 结束
 
@@ -169,7 +179,6 @@ class Ui_Dialog(object):
     # 表格变异-CheckBox-end
 
     # 表格插装变量-CheckBox-start
-
     def insCheckBoxItem(self, checkBool,  struct, memVal):
         global structDict
         checkBox = QtWidgets.QCheckBox()
@@ -234,21 +243,28 @@ class Ui_Dialog(object):
         if whatThing == 'upper':
             structDict[struct][memVal][whatThing] = float(text)
 
-    # 保存为JSON文件
+    '''
+    @description: 将strctDict保存为JSON文件
+    @param {*} self
+    @return {*}
+    '''
     def saveData(self):
         global structDict
         if isinstance(self.header_loc,list):
             folder_loc = self.header_loc[0]
         else:
             folder_loc = self.header_loc
-        pwd = re.sub(folder_loc.split("\\")[-1],"",folder_loc)
-        jsonFile = open(pwd+'structDict.json', 'w')
+        pwd = re.sub(folder_loc.split("\\")[-1],"",folder_loc) + "in\\"
+        jsonFile = open(pwd + "structDict.json", "w")
         self.delCheckBox()
-        jsonFile.write(json.dumps(
-            structDict,  ensure_ascii=False))
+        # jsonFile.write(json.dumps(
+        #     structDict,  ensure_ascii=False))
+        json.dump(structDict, jsonFile)
         jsonFile.close()
         self.setTableContent(structDict)
-    # 表格-LineEdit-end
+        # 弹出保存成功的消息框
+        saveMsgBox = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Information, "消息", "保存成功!")
+        saveMsgBox.exec_()
 
     def delCheckBox(self):  # 清空字典中delcheckbox
         global structDict
@@ -259,6 +275,12 @@ class Ui_Dialog(object):
     def getRanNum(self,lower,upper):
         return int(round(random.uniform(lower, upper), 2))
 
+    '''
+    @description: 根据变量的名称获取它的位大小
+    @param {*} self
+    @param {*} variable 变量的名称
+    @return {*} 返回值是一个int类型的数值，表示了它占多少位
+    '''
     def getBitsize(self,variable):
         if ":" in variable:
             return int(re.sub(" ", "", variable.split(":")[1]))
@@ -280,9 +302,9 @@ class Ui_Dialog(object):
         global structDict
         structDict.clear()
         if readJSON:
-            with open(re.sub(header_loc[0].split("\\")[-1],"",header_loc[0]) + "\\structDict.json","r") as f:
-                tempDict = json.load(f)
-            structDict = tempDict
+            f = open(re.sub(header_loc[0].split("\\")[-1],"",header_loc[0]) + "in\\structDict.json","r")
+            structDict = json.load(f)
+            f.close()
         else:
             # structInfo是一个List, 存储了可设置初始值的成员变量
             structInfo = sa.getOneStruct(header_loc, struct, "", allStruct)
@@ -296,6 +318,38 @@ class Ui_Dialog(object):
             structDict[struct] = tempDict
         # 设置Table
         self.setTableContent(structDict)
+    
+    '''
+    @description: 用一个文件存储哪些字段变异，哪些字段不变异，文件类型是JSON还是TXT?
+    @param {*} self
+    @return {*}
+    '''
+    def genMutation(self):
+        mutationDict = {}
+        for key in structDict:
+            struct = key
+        for key,value in structDict[struct].items():
+            mutationDict[key] = value["mutation"]
+        # 先存成JSON试试
+        try:
+            mutationFile = open(re.sub(self.header_loc[0].split("\\")[-1], "", self.header_loc[0]) + "in\\mutation.json", mode="w")
+            json.dump(mutationDict, mutationFile)
+            print("保存成功!")
+        except:
+            print("保存失败!")
+        mutationDict.clear()
+
+    '''
+    @description: 根据输入的内容，生成种子测试用例seed.txt
+    @param {*} self
+    @return {*}
+    '''
+    def genSeed(self):
+        for key in structDict:
+            struct = key
+        public.genSeed(self.header_loc, struct, structDict)
+        genSeedMsgBox = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Information, "消息", "种子文件生成成功!")
+        genSeedMsgBox.exec_()
     # 结束
 
 if __name__ == "__main__":
