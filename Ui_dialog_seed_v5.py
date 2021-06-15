@@ -1,7 +1,7 @@
 '''
 Author: 金昊宸
 Date: 2021-04-22 14:26:43
-LastEditTime: 2021-06-14 15:49:35
+LastEditTime: 2021-06-15 12:28:51
 Description:
 '''
 # -*- coding: utf-8 -*-
@@ -324,20 +324,35 @@ class Ui_Dialog(object):
     @param {*} self
     @return {*}
     '''
-    def genMutation(self):
-        mutationDict = {}
+    def genMutate(self):
+        # 存成TXT试试
         for key in structDict:
             struct = key
-        for key,value in structDict[struct].items():
-            mutationDict[key] = value["mutation"]
-        # 先存成JSON试试
         try:
-            mutationFile = open(re.sub(self.header_loc[0].split("\\")[-1], "", self.header_loc[0]) + "in\\mutation.json", mode="w")
-            json.dump(mutationDict, mutationFile)
-            print("保存成功!")
+            public.genMutate(self.header_loc, struct, structDict)
+            print("mutate.c生成成功!")
+        except BaseException as e:
+            print("mutate.c生成失败: ", e)
+
+    '''
+    @description: 将插桩的变量写入instrument.txt
+    @param {*} self
+    @return {*}
+    '''
+    def genInstrument(self):
+        for key in structDict:
+            struct = key
+        # 查看哪个变量是插桩变量
+        try:
+            for key,value in structDict[struct].items():
+                if value["instrument"]:
+                    instrumentFile = open(re.sub(self.header_loc[0].split("\\")[-1], "", self.header_loc[0]) + "in\\instrument.txt", mode="w")
+                    instrumentFile.write(key)
+                    instrumentFile.close()
+                    break
+            print("instrument.txt保存成功!")
         except:
-            print("保存失败!")
-        mutationDict.clear()
+            print("instrument.txt保存失败!")
 
     '''
     @description: 根据输入的内容，生成种子测试用例seed.txt
@@ -348,6 +363,9 @@ class Ui_Dialog(object):
         for key in structDict:
             struct = key
         public.genSeed(self.header_loc, struct, structDict)
+        # 生成变异所需得dll文件和表示插桩变量的txt
+        self.genMutate()
+        self.genInstrument()
         genSeedMsgBox = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Information, "消息", "种子文件生成成功!")
         genSeedMsgBox.exec_()
     # 结束

@@ -2,7 +2,7 @@
 Author: Radon
 Date: 2021-05-16 10:03:05
 LastEditors: Radon
-LastEditTime: 2021-06-14 14:55:30
+LastEditTime: 2021-06-15 12:29:11
 Description: Some pulic function
 '''
 
@@ -108,6 +108,38 @@ def genSeed(header_loc, struct, structDict):
         os.system(cmd)
 
 '''
+@description: 写一个mutate.c, 并生成相应得.dll, 以便测试时进行变异操作
+@param {*} header_loc 列表, 里面存储了所有头文件得位置
+@param {*} struct 用户所选择得结构体名称
+@param {*} structDict 结构体字典
+@return {*}
+'''
+def genMutate(header_loc, struct, structDict):
+    # 先设置好相关的位置信息
+    root = re.sub(header_loc[0].split("\\")[-1],"",header_loc[0]) + "\\in\\"
+    if not os.path.exists(root):
+        os.mkdir(root)
+    genMutatePath = root + "mutate.c"
+    # 开始写代码，先include相关内容
+    code = "#include <stdio.h>\n#include <stdbool.h>\n"
+    # 把用户选择的头文件位置也include
+    for header in header_loc:
+        code += "#include \"" + header + "\"\n"
+    code += "using namespace std;\n\n"
+    code += "void mutate(char* seedPath){\n"
+    # 新建结构体变量
+    code += "\t" + struct + " data;\n"
+    for key,value in structDict[struct].items():
+        if not value["mutation"]:
+            continue
+        dataName = key.split(" ")[-1].split(":")[0]
+        code += "\tdata." + dataName + " = 1;\n"
+    code += "}"
+    mutateFile = open(root + "mutate.c", mode="w")
+    mutateFile.write(code)
+    # gcc -shared -o mutate.dll mutate.c
+
+'''
 @description: 模拟按下ESC键
 @param {*}
 @return {*}
@@ -116,3 +148,9 @@ def pressESC():
     win32api.keybd_event(27,0,0,0)
     time.sleep(0.1)
     win32api.keybd_event(27,0,2,0)
+
+import ctypes
+if __name__ == "__main__":
+    dll = ctypes.cdll.LoadLibrary("./mutate.dll")
+    seedPath = bytes("C:\\User\\Radon",encoding="utf8")
+    dll.test(seedPath)
