@@ -2,7 +2,7 @@
 Author: Radon
 Date: 2021-05-16 10:03:05
 LastEditors: Radon
-LastEditTime: 2021-06-15 12:29:11
+LastEditTime: 2021-06-16 13:07:23
 Description: Some pulic function
 '''
 
@@ -108,7 +108,7 @@ def genSeed(header_loc, struct, structDict):
         os.system(cmd)
 
 '''
-@description: 写一个mutate.c, 并生成相应得.dll, 以便测试时进行变异操作
+@description: 写一个mutate_instru.c, 并生成相应得.dll, 以便测试时进行变异操作和读取插桩变量的值
 @param {*} header_loc 列表, 里面存储了所有头文件得位置
 @param {*} struct 用户所选择得结构体名称
 @param {*} structDict 结构体字典
@@ -119,38 +119,51 @@ def genMutate(header_loc, struct, structDict):
     root = re.sub(header_loc[0].split("\\")[-1],"",header_loc[0]) + "\\in\\"
     if not os.path.exists(root):
         os.mkdir(root)
-    genMutatePath = root + "mutate.c"
+    genMutatePath = root + "mutate_instru.c"
     # 开始写代码，先include相关内容
     code = "#include <stdio.h>\n#include <stdbool.h>\n"
     # 把用户选择的头文件位置也include
     for header in header_loc:
         code += "#include \"" + header + "\"\n"
-    code += "using namespace std;\n\n"
-    code += "void mutate(char* seedPath){\n"
-    # 新建结构体变量
-    code += "\t" + struct + " data;\n"
+    code += "\n"
+    # mutate函数中有三个形参: struct data是发送数据的结构体, seedPath是变异后的文件保存路径, 精确到.txt
+    # r是一个随机数, 用于与原来的值进行异或
+    code += "void mutate(" + struct + " data, char* seedPath, int r){\n"
+    # 变异操作
     for key,value in structDict[struct].items():
         if not value["mutation"]:
             continue
         dataName = key.split(" ")[-1].split(":")[0]
-        code += "\tdata." + dataName + " = 1;\n"
-    code += "}"
-    mutateFile = open(root + "mutate.c", mode="w")
+        code += "\tdata." + dataName + " ^= r;\n"
+    # 变异体写入文件
+    code += "\tunsigned char* p = (unsigned char*)&data;\n\tFILE* f = fopen(savePath, \"w\");\n"
+    code += "\tfor (; p < (unsigned char*)&data + sizeof(data); p++) {\n"
+    code += "\t\tfprintf(f,\"%d\", *p);\n"
+    code += "\t\tif (p != (unsigned char*)&data + sizeof(data)-1)\n"
+    code += "\t\t\tfprintf(f, \",\");\n"
+    code += "\t}\n\tfclose(f);"
+    code += "}\n\n"
+    # 写一个获取插装变量的值的函数
+    code += "int getInstrumentValue(" + struct + " data){\n"
+    for key,value in structDict[struct].items():
+        if not value["instrument"]:
+            continue
+        dataName = key.split(" ")[-1].split(":")[0]
+        code += "\treturn data." + dataName + ";\n"
+    code +="}"
+    mutateFile = open(root + "mutate_instru.c", mode="w")
     mutateFile.write(code)
-    # gcc -shared -o mutate.dll mutate.c
+    # 生成.dll文件
+    os.chdir(root)
+    os.system("gcc -shared -o mutate_instru.dll mutate_instru.c")
+    # gcc -shared -o mutate_instru.dll mutate_instru.c
 
-'''
-@description: 模拟按下ESC键
-@param {*}
-@return {*}
-'''
-def pressESC():
-    win32api.keybd_event(27,0,0,0)
-    time.sleep(0.1)
-    win32api.keybd_event(27,0,2,0)
-
-import ctypes
-if __name__ == "__main__":
-    dll = ctypes.cdll.LoadLibrary("./mutate.dll")
-    seedPath = bytes("C:\\User\\Radon",encoding="utf8")
-    dll.test(seedPath)
+# import ctypes
+# if __name__ == "__main__":
+#     dll = ctypes.cdll.LoadLibrary("./mutate_instru.dll")
+#     seed = bytes([124,0,65,35,66,0,0,0,21,167,116,122,72,145,87,0,83,0,0,0,92,101,0,0,116,0,0,0,20,0,0,0,44,45,0,0,79,0,0,0,37,0,0,0,0,0,0,0,8,0,0,0,0,0,0,0,92,73,1,5,108,1,22,34,1,86,93,1])
+#     mutatePath = bytes("C:\\Users\\Radon\\Desktop\\fuzztest\\4th\\example\\in\\mutate.txt",encoding="utf8")
+#     dll.mutate(seed, mutatePath)
+    
+#     res = dll.getInstrumentValue(seed)
+#     print(type(res))

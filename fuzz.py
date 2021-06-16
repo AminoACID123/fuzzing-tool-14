@@ -189,7 +189,7 @@ def getFitness(testcase, targetSet, program_loc, callGraph, maxTimeout):
     # 等待线程1和线程2结束
     thread1.join()
     thread2.join()
-    # 将返回
+    # 读取返回的UDP包的内容
     global returnUDPInfo
     returnUDPInfo = returnUDPInfo.split(",")
     returnUDPInfo.pop(-1)
@@ -322,24 +322,31 @@ def generateReport(source_loc,fuzzInfoDict):
     f.write(reportContent)
     f.close()    
 
-def fuzz(source_locs,ui,uiFuzz,fuzzThread):
-    source_locs = source_locs.split("\n")
-    for source_loc in source_locs:
-        if not os.path.exists(source_loc):
-            print(source_loc)
+'''
+@description: 模糊测试的函数, 是该项目核心的函数之一
+@param {*} source_loc 列表, 其中存储了所有C文件的位置
+@param {*} ui 主页面
+@param {*} uiFuzz 模糊测试页面
+@param {*} fuzzThread 模糊测试页面新开的测试线程, 单线程的话在测试期间会卡住
+@return {*}
+'''
+def fuzz(source_loc,ui,uiFuzz,fuzzThread):
+    for source in source_loc:
+        if not os.path.exists(source):
+            print(source)
             fuzzThread.fuzzInfoSgn.emit("\n\n\t\t被测文件不存在!")
-            return "not exist!"
+            return "source not exist!"
 
-    now_loc = re.sub(source_locs[0].split("\\")[-1],"",source_locs[0])      # 当前所在目录
+    now_loc = re.sub(source_loc[0].split("\\")[-1],"",source_loc[0])      # 当前所在目录
     instrument_loc = now_loc + "instrument.c"
     output_loc = now_loc                                            # 输出exe和obj的位置
     program_loc = now_loc + "instrument.exe"    #可执行文件位置
-    testcase_loc = now_loc + "in"             #初始测试用例位置
+    seed_loc = now_loc + "in\\seed.txt"     #初始测试用例位置
     graph_loc = now_loc + "graph_cg.txt"   #调用图位置
 
     # 待修改
     # instr.instrument(source_loc,instrument_loc,output_loc) 
-    # cg.createCallGraph(source_loc,graph_loc)
+    cg.createCallGraph(source_loc,graph_loc)
 
 
 
@@ -369,6 +376,7 @@ def fuzz(source_locs,ui,uiFuzz,fuzzThread):
     # if not os.path.exists(testcase_loc):
     #     print("input file not exist!")
     #     return 
+    # 如果已经有out了, 就删掉它
     if os.path.exists(now_loc+"\\out"):
         shutil.rmtree(now_loc + "\\out")
 
@@ -412,11 +420,10 @@ def fuzz(source_locs,ui,uiFuzz,fuzzThread):
     global allNode
     allNode = sorted(set(allNode),key=allNode.index)
 
-    # testcase = getTestcase(testcase_loc)
-    # testcase = ["12cde","ab345"]
     # 待修改
-    testcase = [[204, 204, 204, 204, 204, 204, 204, 204, 204, 1, 1, 1, 1, 1, 1, 0, 204, 204, 204, 204, 0, 0, 204, 204, 204, 204, 204, 204, 204, 204, 204, 204, 1, 1, 204, 204, 204, 204, 204, 204, 204, 204, 204, 204, 2, 2, 204, 204, 204, 204, 204, 204, 204, 204, 204, 204, 204, 204, 1, 204, 204, 0, 1, 1, 1, 2, 2, 0]]
-    testcase[0] = [str(data) for data in testcase[0]]
+    testcase.append(open(seed_loc).read().split(","))
+    print(testcase)
+    # testcase[0] = [str(data) for data in testcase[0]]
     mkdir(now_loc + "\\out\\testcases")
     mkdir(now_loc+"\\out\\crash")
     mkdir(now_loc+"\\out\\timeout")
@@ -512,7 +519,7 @@ def fuzz(source_locs,ui,uiFuzz,fuzzThread):
     # 生成测试报告
     fuzzThread.fuzzInfoSgn.emit(fuzzInfo)
     fuzzInfoDict = {"测试时间" : str(int(end-start)),
-                    "测试对象" : source_locs[0].split("\\")[-1],
+                    "测试对象" : source_loc[0].split("\\")[-1],
                     "循环次数" : str(cycle),
                     "制导目标数量" : str(len(targetSet)),
                     "生成速度" : str(int(maxMutateTC/mutateTime)),
@@ -525,7 +532,7 @@ def fuzz(source_locs,ui,uiFuzz,fuzzThread):
                     "已发现结点数量" : str(len(allNode)),
                     "已覆盖结点" : allCoveredNode,
                     "整体覆盖率" : str(int(coverage[1]*100))}
-    generateReport(source_locs[0],fuzzInfoDict)
+    generateReport(source_loc[0],fuzzInfoDict)
     uiFuzz.textBrowser.append("\n已生成测试报告! 点击<查看结果>按钮以查看")
 
     print("\n",allCoveredNode)

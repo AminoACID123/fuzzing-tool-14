@@ -1,7 +1,7 @@
 '''
 Author: 金昊宸
 Date: 2021-04-22 14:26:43
-LastEditTime: 2021-06-15 12:28:51
+LastEditTime: 2021-06-16 12:30:14
 Description:
 '''
 # -*- coding: utf-8 -*-
@@ -311,7 +311,7 @@ class Ui_Dialog(object):
             print(structInfo)
             tempDict = {}
             # 分析并设置structDict的值
-            for i in range(1, len(structInfo)):
+            for i in range(0, len(structInfo)):
                 tempDict[structInfo[i]] = {"value": None, "lower": 0, "upper": 999, "instrument": False, "mutation": False, "bitsize": 8}
                 tempDict[structInfo[i]]["bitsize"] = self.getBitsize(structInfo[i])
                 tempDict[structInfo[i]]["upper"] = 2**tempDict[structInfo[i]]["bitsize"] - 1
@@ -330,9 +330,9 @@ class Ui_Dialog(object):
             struct = key
         try:
             public.genMutate(self.header_loc, struct, structDict)
-            print("mutate.c生成成功!")
+            print("mutate_instru.c生成成功!")
         except BaseException as e:
-            print("mutate.c生成失败: ", e)
+            print("mutate_instru.c生成失败: ", e)
 
     '''
     @description: 将插桩的变量写入instrument.txt

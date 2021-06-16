@@ -243,6 +243,12 @@ class Ui_MainWindow(object):
         # 手写内容结束
 
     # 以下为手写内容
+    '''
+    @description: 选择C文件
+    @param {*} self
+    @param {*} Filepath
+    @return {*}
+    '''
     def chooseCFile(self, Filepath):
         # 注意！getOpenFileNames()中的filter如果想选择多个文件的话，需要用两个分号隔开！
         # temp = QtWidgets.QFileDialog.getOpenFileNames(None,"choose file","C:/Users/Radon/Desktop/",filter="c files (*.c);;cpp Files (*.cpp)")
@@ -256,6 +262,12 @@ class Ui_MainWindow(object):
         path = path.rstrip("\n")
         self.CFileLoc.setText(path)
 
+    '''
+    @description: 选择头文件
+    @param {*} self
+    @param {*} Filepath
+    @return {*}
+    '''
     def chooseHFile(self, Filepath):
         temp = QtWidgets.QFileDialog.getOpenFileNames(None,"choose file","C:/Users/Radon/Desktop/","h files (*.h)")
         path = ""
@@ -267,14 +279,37 @@ class Ui_MainWindow(object):
         path = path.rstrip("\n")
         self.HFileLoc.setText(path)
 
+    '''
+    @description: 弹出模糊测试的窗口, 在测试前，会询问用户是否已将数据维持在了最新状态
+                  注意, 需要把C文件与H文件放在同一目录下
+    @param {*} self
+    @return {*}
+    '''
     def popFuzzDialog(self):
         print(self.targetSetInfo.toPlainText())
-        source_loc = self.CFileLoc.toPlainText()
+        source_loc = self.CFileLoc.toPlainText().split("\n")
+        for source in source_loc:
+            if not os.path.exists(source):
+                sourceNotExistBox = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Warning, "警告", "C文件不存在！")
+                sourceNotExistBox.exec_()
+                return
+        if not os.path.exists(re.sub(source_loc[0].split("\\")[-1],"",source_loc[0]) + "\\in\\"):
+            seedNotExistBox = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Warning, "警告", "种子文件不存在！")
+            seedNotExistBox.exec_()
+            return
+        seedLatestBox = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Warning, '警告', '模糊测试即将开始, 请确认种子文件为最新状态')
+        yes = seedLatestBox.addButton('确定', QtWidgets.QMessageBox.YesRole)
+        no = seedLatestBox.addButton('修改种子', QtWidgets.QMessageBox.NoRole)
+        seedLatestBox.exec_()
+        if seedLatestBox.clickedButton() == no:
+            seedSetBox = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Information, "消息", "您可以点击主页面中的手动输入按钮以更新种子")
+            seedSetBox.exec_()
+            return
         self.fuzzDialog = QtWidgets.QDialog()
         self.uiFuzz = fuzzDialogPY.Ui_Dialog()
         self.uiFuzz.setupUi(self.fuzzDialog)
         self.fuzzDialog.show()
-        self.uiFuzz.startFuzz(source_loc,ui,self.uiFuzz,self.uiSeed)
+        self.uiFuzz.startFuzz(source_loc,ui,self.uiFuzz)
     
     def popSeedDialog(self):
         header_loc = self.HFileLoc.toPlainText()
@@ -356,6 +391,11 @@ class Ui_MainWindow(object):
             self.structDialog.show()
             self.uiStruct.setValues(header_loc)
     
+    '''
+    @description: 通过CPPCHECK进行静态分析获取可能有缺陷的地方
+    @param {*} self
+    @return {*}
+    '''
     def SAByCppcheck(self):
         self.targetSetInfo.clear()
         source_loc = self.CFileLoc.toPlainText()

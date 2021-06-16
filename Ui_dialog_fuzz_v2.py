@@ -60,15 +60,15 @@ class Ui_Dialog(object):
 "<p align=\"center\" style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">测试信息</p></body></html>"))
 
     # 以下为手写内容
-    def startFuzz(self,source_locs,ui,uiFuzz,uiSeed):
-        # fuzz.fuzz(source_locs,ui,ui2)
-        self.source_locs = source_locs
+    def startFuzz(self,source_loc,ui,uiFuzz):
+        # fuzz.fuzz(source_loc,ui,ui2)
+        self.source_loc = source_loc
         self.targetSetInfo = re.sub("[^A-Za-z1-9_\n]","",ui.targetSetInfo.toPlainText())
         self.fuzzThread = FuzzThread()
         self.fuzzThread.fuzzInfoSgn.connect(self.fuzzInfoPrint)
         self.fuzzThread.overSgn.connect(self.overFuzz)
         self.fuzzThread.errorSgn.connect(self.errorFuzz)
-        self.fuzzThread.setValues(source_locs,ui,uiFuzz,uiSeed,self.targetSetInfo)
+        self.fuzzThread.setValues(source_loc,ui,uiFuzz,self.targetSetInfo)
         if len(self.targetSetInfo) == 0:
             self.textBrowser.setText("\n\n\t\t初始化中...\n\t即将开始无目标的模糊测试...")
         else:
@@ -93,7 +93,7 @@ class Ui_Dialog(object):
         self.stop = True
     
     def openFolder(self):
-        out_loc = self.source_locs.split("\n")[0]
+        out_loc = self.source_loc.split("\n")[0]
         out_loc = re.sub(out_loc.split("\\")[-1],"",out_loc)+"out"
         if os.path.exists(out_loc):
             os.system("explorer.exe "+out_loc)
@@ -107,21 +107,20 @@ class FuzzThread(QThread):
     errorSgn = QtCore.pyqtSignal(bool)
     def __init__(self):
         super().__init__()
-    def setValues(self,source_locs,ui,uiFuzz,uiSeed,targetSetInfo):
-        self.source_locs = source_locs
+    def setValues(self,source_loc,ui,uiFuzz,targetSetInfo):
+        self.source_loc = source_loc
         self.ui = ui
         self.uiFuzz = uiFuzz
-        self.uiSeed = uiSeed
         self.targetSetInfo = targetSetInfo
         self.start()
     def run(self):
         print("FuzzThread has started.")
         if len(self.targetSetInfo) == 0:
             fuzz_notarget.initGloablVariable()
-            self.result = fuzz_notarget.fuzz(self.source_locs,self.ui,self.uiFuzz,self)
+            self.result = fuzz_notarget.fuzz(self.source_loc,self.ui,self.uiFuzz,self)
         else:
             fuzz.initGloablVariable()
-            self.result = fuzz.fuzz(self.source_locs,self.ui,self.uiFuzz,self)
+            self.result = fuzz.fuzz(self.source_loc,self.ui,self.uiFuzz,self)
         if isinstance(self.result,str):
             self.errorSgn.emit(True)
         else:
