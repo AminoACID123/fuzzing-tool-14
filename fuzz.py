@@ -31,6 +31,30 @@ def get_str_btw(s, f, b):
     par = s.partition(f)
     return (par[2].partition(b))[0][:]
 
+'''
+@description: 获取一个数的二进制中1所在的位置, 主要用于查看覆盖到了哪些点
+@param {*} num 数字, 结构体中插装变量返回的值
+@return {*}
+'''
+def getCoverNode(num):
+    cover = []
+    coverNode = []
+    loc = 0
+    while num:
+        if num & 1:
+            cover.append(loc)
+        num = num >> 1
+        loc += 1
+    global allNode
+    for data in cover:
+        coverNode.append(allNode[data])
+    return coverNode
+
+'''
+@description: 获取调用图的数据
+@param {*} fileName 调用图位置
+@return {*}
+'''
 def loadData(fileName):
     file = open(fileName,'r')#read file
     weightedEdges = []
@@ -48,6 +72,13 @@ def loadData(fileName):
     file.close()
     return weightedEdges
 
+'''
+@description: 获取覆盖结点集合与目标结点之间的最短距离
+@param {*} graph 图, 需要根据图计算距离
+@param {*} nodeSet 结点集合
+@param {*} target 目标结点
+@return {*}
+'''
 def getDistance_shortest(graph,nodeSet,target):
     G = nx.Graph()
     G.add_weighted_edges_from(graph)
@@ -58,10 +89,17 @@ def getDistance_shortest(graph,nodeSet,target):
             distance = nx.dijkstra_path_length(G,node,target)
             if distance < shortest:
                 shortest = distance
-        except nx.NetworkXNoPath:
+        except:
             shortest = 999.0
     return shortest
 
+'''
+@description: 获取结点集合与目标结点之间的平均距离
+@param {*} graph 图, 需要根据图计算距离
+@param {*} nodeSet 结点集合
+@param {*} target 目标结点
+@return {*}
+'''
 def getDistance_average(graph,nodeSet,target):
     G = nx.Graph()
     G.add_weighted_edges_from(graph)
@@ -80,69 +118,17 @@ def getDirContent(position):
             content.append(f.read())
     return content
 
-def checkCrash(testcase, returncode, coverNode):           #这里的检测缺陷方法是否合适？
-    global crash_code
-    global crashNode
-    crashNode = sorted(set(crashNode),key=crashNode.index)
-    # print("coverNode:",coverNode)
-    if returncode != 0:
-        # print("there is a crash.")
-        if not returncode in crash_code:
-            print("returncode:",returncode)
-            crash_code.append(returncode)
-            if len(coverNode) == 0:
-                pass
-            else:
-                crashNode.extend(coverNode)
-            return True
-        if not set(crashNode) >= set(coverNode):
-            crashNode.extend(coverNode)
-            print("Crash code repeat, but cover node not equal.")
-            return True
-    return False
-
-# def getFitness(testcase,targetSet,program_loc,callGraph,maxTimeout):
-#     testcase = str(testcase)
-#     coverNode = []
-#     p=Popen([program_loc],stdout=PIPE,stdin=PIPE,stderr=STDOUT)
-#     try:
-#         out = p.communicate(input=bytes(testcase,encoding="utf8"),timeout=maxTimeout)[0]
-#     except TimeoutExpired:
-#         p.kill()
-#         out = b"timeout"
-#     p.kill()
-#     output = out.decode().split("\n")
-#     for j in range(0,len(output)):
-#         if "execute-" in output[j]:
-#             coverNode.append(get_str_btw(output[j],"execute-","\r"))
-#             coverNode = sorted(set(coverNode),key=coverNode.index)
-#     global crashes
-#     if p.returncode != 0:
-#         crashes += 1
-#     crashResult = checkCrash(testcase,p.returncode,coverNode)
-#     if out.decode() == "timeout":
-#         timeout = True
-#     else:
-#         timeout = False
-#     distance = 0
-#     for target in targetSet:
-#         distance += getDistance_shortest(callGraph,coverNode,target)    # or average
-#     distance = distance/len(targetSet)
-#     if distance == 0:
-#         fitness = 200
-#     else:
-#         fitness = 1/distance
-#     return (testcase,distance,fitness,coverNode,crashResult,timeout)
-
 '''
 @description: 线程1-启动C++接收方，用于接收由py发送的测试用例
 @param {*}
 @return {*}
 '''
 def threadReceiver():
+    global isCrash
+    isCrash = 0
     prog = "C:\\Users\\Radon\\Desktop\\fuzztest\\4th\\example\\main.exe"
     out = getstatusoutput(prog)
-    # print("main.exe: " + str(out[0]))
+    isCrash = out[0]
 
 '''
 @description: 线程2-启动python监控方，用于收集C++返回的UDP
@@ -165,7 +151,7 @@ def threadMonitor():
 @param {*} maxTimeout 超时时间
 @return {*} 返回(测试用例, 距离, 适应度, 覆盖点, 是否触发缺陷, 是否超时)，返回结果是一个元组
 '''
-def getFitness(testcase, targetSet, program_loc, callGraph, maxTimeout):
+def getFitness(testcase, targetSet, program_loc, callGraph, maxTimeout, MAIdll):
     # 先启动线程2，用于监控
     thread2 = threading.Thread(target = threadMonitor, name = "thread_monitor",)
     thread2.start()
@@ -182,8 +168,6 @@ def getFitness(testcase, targetSet, program_loc, callGraph, maxTimeout):
     host = socket.gethostname()
     port = 8888
     s.connect((host, port))
-    # data = bytes([204,204,204,204,204,204,204,204,204,1,1,1,1,1,1,0,204,204,204,204,0,0,204,204,204,204,204,204,204,204,204,204,1,1,204,204,204,204,204,204,204,204,204,204,2,2,204,204,204,204,204,204,204,204,204,204,204,204,1,204,204,0,1,1,1,2,2,0])
-    # data = bytes([10,20,204,204,30,40,50,204])
     s.send(data)
     s.close()
     # 等待线程1和线程2结束
@@ -196,11 +180,13 @@ def getFitness(testcase, targetSet, program_loc, callGraph, maxTimeout):
     returnUDPInfo[0] = re.sub("[^0-9]","",returnUDPInfo[0])
     returnUDPInfo = [int(data) for data in returnUDPInfo]
     print("returnData", returnUDPInfo)
-    print("length: ", len(returnUDPInfo))
     # 分析缺陷，覆盖什么的代码，待补充
+    # 获得覆盖的结点
+    instrValue = MAIdll.getInstrumentValue(bytes(returnUDPInfo))
+    coverNode = getCoverNode(instrValue)
+    print("coverNode:",coverNode)
     distance = 1
     fitness = 1/distance
-    coverNode = ["1","2"]
     crashResult = False
     timeout = False
     return (testcase,distance,fitness,coverNode,crashResult,timeout)
@@ -208,41 +194,17 @@ def getFitness(testcase, targetSet, program_loc, callGraph, maxTimeout):
 '''
 @description: 根据南京大学徐安孜同学写的例子对变异进行了改写，由于均是数字，所以做一下和数字有关的操作就好
 @param {*} testcase 传入的测试用例是内部元素均为str的list
+@param {*} mutateSavePath 变异测试用例的保存路径, 与原本流程不同, 在这里直接将变异后的测试用例保存到本地
 @return {*}
 '''
-def mutate(testcase):
+def mutate(testcase, mutateSavePath, MAIdll):
     # 先把测试用例转为内部元素均为int的list
     testcase = [int(data) for data in testcase]
-    temp = []
-    for data in testcase:
-        r1 = random.randint(0, 9)
-        r2 = random.randint(1,100)
-        # 给每个元素设置了7种变异方式
-        # 分别是加, 减, 乘, 除, 与, 或, 取余
-        if r1 == 0:
-            data += r2
-        elif r1 == 1:
-            data -= r2
-        elif r1 == 2:
-            data *= r2
-        elif r1 == 3:
-            data /= r2
-        elif r1 == 4:
-            data &= r2
-        elif r1 == 5:
-            data |= r2
-        else:
-            data %= r2
-        # data不要超过255(1字节最大值)，如果超过了就取余
-        # 也不要有负数，如果有就取绝对值
-        if data > 255:
-            data %= 255
-        elif data < 0:
-            data = abs(data)
-        temp.append(int(data))
-    # 转为元素均为str类型的数据并返回
-    testcase = [str(data) for data in temp]
-    return testcase
+    # 形参需要转换为bytes类型才能正确传递给dll
+    testcase = bytes(testcase)
+    mutateSavePath = bytes(mutateSavePath, encoding="utf8")
+    r = random.randint(0,255)
+    MAIdll.mutate(testcase, mutateSavePath, r)
 
 
 def crossover(population):
@@ -348,34 +310,10 @@ def fuzz(source_loc,ui,uiFuzz,fuzzThread):
     # instr.instrument(source_loc,instrument_loc,output_loc) 
     cg.createCallGraph(source_loc,graph_loc)
 
+    # 加载所需的DLL文件
+    # MAI是Mutate And Instrument的缩写
+    MAIdll = ctypes.cdll.LoadLibrary(now_loc + "in\\mutate_instru.dll")
 
-
-    # dll = ctypes.cdll.LoadLibrary("D:\\VS2015Project\\FuzzExperiment\\Project8\\Project8\\cmutate.dll")
-    # dll.mutate.restype = ctypes.c_uint64            # 由于py的bug，需要将调用方法的restype做出调整
-    # example = bytes("abcdefg",encoding="utf8")      # 传入字节
-    # r1 = int(random.random()*10000)
-    # r2 = random.randint(1,127)
-    # res = dll.mutate(example,r1,r2)
-    # res = ctypes.string_at(res)
-    # print("res:",res.decode("utf8"))
-
-    # p=Popen([program_loc],stdout=PIPE,stdin=PIPE,stderr=STDOUT)
-    # try:
-    #     out = p.communicate(input=bytes("120",encoding="utf8"),timeout=10)[0]
-    # except TimeoutExpired:
-    #     out = b"timeout"
-    #     print("超时")
-    # p.kill()
-    # print(p.returncode)
-    # print(out.decode())
-
-    # print(getFitness("10",["func6","func3"],program_loc,loadData(graph_loc),10))
-
-
-
-    # if not os.path.exists(testcase_loc):
-    #     print("input file not exist!")
-    #     return 
     # 如果已经有out了, 就删掉它
     if os.path.exists(now_loc+"\\out"):
         shutil.rmtree(now_loc + "\\out")
@@ -416,13 +354,13 @@ def fuzz(source_loc,ui,uiFuzz,fuzzThread):
 
 
     # 待修改
-    # callGraph = loadData(graph_loc)
+    callGraph = loadData(graph_loc)
     global allNode
     allNode = sorted(set(allNode),key=allNode.index)
+    print("allNode:", allNode)
 
     # 待修改
     testcase.append(open(seed_loc).read().split(","))
-    print(testcase)
     # testcase[0] = [str(data) for data in testcase[0]]
     mkdir(now_loc + "\\out\\testcases")
     mkdir(now_loc+"\\out\\crash")
@@ -451,7 +389,7 @@ def fuzz(source_loc,ui,uiFuzz,fuzzThread):
         executeNum = len(testcase)
         for i in range(0,len(testcase)):
             uiFuzz.textBrowser.append("正在执行第"+str(i)+"个测试用例")
-            returnData = getFitness(testcase[i],targetSet,program_loc,callGraph,maxTimeout)
+            returnData = getFitness(testcase[i],targetSet,program_loc,callGraph,maxTimeout,MAIdll)
             distance = returnData[1]
             fitness = returnData[2]
             coverNode = returnData[3]
@@ -484,28 +422,28 @@ def fuzz(source_loc,ui,uiFuzz,fuzzThread):
         executeEnd = time.time()
         TC_data = sorted(TC_data,key=itemgetter(1))
         mkdir(now_loc + "\\out\\mutate\\cycle"+str(cycle))
-        testcase.clear()
         mutateStart = time.time()               # 记录变异开始时间
         checkpoint = mutateNum
         while mutateNum - checkpoint < maxMutateTC:
             pm = 98.0
             for data in TC_data:
                 if random.randint(0,100) < pm:    # 小于阈值就进行下列变异操作
-                    mutateFile = open(now_loc + "\\out\\mutate\\cycle"+str(cycle)+"\\mutate" + str(mutateNum).zfill(6) + ".txt", mode="w")
-                    # temp = mutate(data[0])
-                    # temp = CMutate(data[0],maxTCLen)
-                    temp = mutate(data[0])
-                    testcase.append(temp)
-                    # mutateFile.write(str(temp))
-                    mutateFile.write(",".join(temp))
+                    mutateSavePath = now_loc + "\\out\\mutate\\cycle"+str(cycle)+"\\mutate" + str(mutateNum).zfill(6) + ".txt"
+                    mutate(data[0], mutateSavePath, MAIdll)
                     mutateNum += 1
-                    mutateFile.close()
                 pm -= (98.0/maxMutateTC)
                 if mutateNum - checkpoint >= maxMutateTC:
                     break
+        # 读取文件夹下的变异的测试用例, 赋值到testcase
+        testcase.clear()
+        mutateSavePath = now_loc + "\\out\\mutate\\cycle"+str(cycle)+"\\"
+        files = os.listdir(mutateSavePath)
+        for file in files:
+            f = open(mutateSavePath + file)
+            testcase.append(f.read().split(","))
         cycle += 1
         end=time.time()
-        
+        # 生成简短的测试信息
         mutateTime = end - mutateStart
         executeTime = executeEnd - executeStart
         fuzzInfo = "\n测试时间\t\t\t"+str(int(end-start))+"s\n"
@@ -546,14 +484,16 @@ def initGloablVariable():
     crash_code.clear()
     crashNode.clear()
     allNode = ["main"]
+    isCrash = 0
     crashes = 0
 
 crash_code = []         # 存储异常退出导致的错误代码
 crashNode = []          # 触发错误覆盖到了哪些结点，如果覆盖到crashNode中没有的结点，就将该结点
                         # 添加到crashNode中，并保存测试用例
 allNode = []            # 储存了图里的所有结点
+isCrash = 0             # 程序的返回值
 crashes = 0             # 统计触发了多少次缺陷
-returnUDPInfo = []            # 存储发送回来的UDP数据包
+returnUDPInfo = []      # 存储发送回来的UDP数据包
 
 def threadReceiver():
     prog = "C:\\Users\\Radon\\Desktop\\fuzztest\\4th\\example\\main.exe"

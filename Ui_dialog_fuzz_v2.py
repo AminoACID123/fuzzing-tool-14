@@ -93,7 +93,7 @@ class Ui_Dialog(object):
         self.stop = True
     
     def openFolder(self):
-        out_loc = self.source_loc.split("\n")[0]
+        out_loc = self.source_loc[0]
         out_loc = re.sub(out_loc.split("\\")[-1],"",out_loc)+"out"
         if os.path.exists(out_loc):
             os.system("explorer.exe "+out_loc)

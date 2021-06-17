@@ -2,7 +2,7 @@
 Author: Radon
 Date: 2020-09-28 13:18:56
 LastEditors: Radon
-LastEditTime: 2021-06-16 14:20:05
+LastEditTime: 2021-06-17 15:51:49
 Description: Hi, say something
 '''
 import re
@@ -70,7 +70,6 @@ def createCallGraph(source_loc, graph_loc):
                 brace -= 1
 
     print("graph:",graph)
-    print("customize:",customize)
     for i in range(0,len(graph)):
         f_graph.write(graph[i]+"\n")
     f_graph.close()

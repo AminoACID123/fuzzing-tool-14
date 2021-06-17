@@ -1,6 +1,14 @@
+'''
+Author: Radon
+Date: 2021-06-09 16:37:49
+LastEditors: Radon
+LastEditTime: 2021-06-17 15:20:40
+Description: Hi, say something
+'''
 import re
 import os
 import subprocess
+import public
 
 def get_str_btw(s, f, b):
     par = s.partition(f)
@@ -9,30 +17,13 @@ def get_str_btw(s, f, b):
 def printInfo(msg):
     print("\n\033[0;32mInfo:\033[0m"+msg)
 
-def deleteNote(source):
-    skip = False
-    for i in range(len(source)):
-        if "//" in source[i]:
-            source[i]=source[i].split("//")[0]+"\n"
-        if "/*" in source[i]:
-            skip = True
-            if "*/" in source[i]:
-                skip = False
-                source[i]=source[i].split("/*")[0]+"\n"
-        elif "*/" in source[i]:
-            skip=False
-            source[i]="\n"
-        if skip==True:
-            source[i]="\n"
-    return source
-
 def instrument(source_loc,instrument_loc,output_loc):
     brace = 0      # 记录大括号数量，方便后续操作
     instr = False
     f = open(source_loc)
     lines = f.readlines()
     f.close()
-    lines = deleteNote(lines)
+    lines = public.deleteNote(lines)
     length = len(lines)
     i = 0
     while i != length:
