@@ -185,9 +185,9 @@ def getFitness(testcase, targetSet, program_loc, callGraph, maxTimeout, MAIdll):
     instrValue = MAIdll.getInstrumentValue(bytes(returnUDPInfo))
     coverNode = getCoverNode(instrValue)
     print("coverNode:",coverNode)
-    distance = 1
+    distance = getDistance_average(callGraph, coverNode, targetSet)
     fitness = 1/distance
-    crashResult = False
+    crashResult = isCrash
     timeout = False
     return (testcase,distance,fitness,coverNode,crashResult,timeout)
 

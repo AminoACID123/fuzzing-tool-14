@@ -2,7 +2,7 @@
 Author: Radon
 Date: 2021-06-09 16:37:49
 LastEditors: Radon
-LastEditTime: 2021-06-17 15:20:40
+LastEditTime: 2021-06-19 12:26:58
 Description: Hi, say something
 '''
 import re
@@ -17,6 +17,7 @@ def get_str_btw(s, f, b):
 def printInfo(msg):
     print("\n\033[0;32mInfo:\033[0m"+msg)
 
+# 需要改成多文件插装
 def instrument(source_loc,instrument_loc,output_loc):
     brace = 0      # 记录大括号数量，方便后续操作
     instr = False

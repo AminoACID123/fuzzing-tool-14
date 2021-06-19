@@ -2,7 +2,7 @@
 Author: Radon
 Date: 2021-05-16 10:03:05
 LastEditors: Radon
-LastEditTime: 2021-06-17 16:25:38
+LastEditTime: 2021-06-19 11:58:27
 Description: Some pulic function
 '''
 
@@ -144,16 +144,20 @@ def genMutate(header_loc, struct, structDict):
     code += "\t}\n\tfclose(f);"
     code += "}\n\n"
     # 写一个获取插装变量的值的函数
-    code += "int getInstrumentValue(" + struct + " data){\n"
     for key,value in structDict[struct].items():
         if not value["instrument"]:
             continue
+        dataType = key.split(" ")
+        dataType.pop(-1)
+        dataType = " ".join(dataType)
         dataName = key.split(" ")[-1].split(":")[0]
+        code += dataType + " getInstrumentValue(" + struct + " data){\n"
         code += "\treturn data." + dataName + ";\n"
     code +="}"
     mutateFile = open(root + "mutate_instru.c", mode="w")
     mutateFile.write(code)
     # 生成.dll文件
+    # 这里还有点问题，根据代码生成的dll文件执行过程中会出错，但手动生成的就不会出错
     os.chdir(root)
     os.system("gcc -shared -o mutate_instru.dll mutate_instru.c")
     # gcc -shared -o mutate_instru.dll mutate_instru.c
