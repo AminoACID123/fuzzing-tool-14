@@ -2,7 +2,7 @@
 Author: Radon
 Date: 2021-05-16 10:03:05
 LastEditors: Radon
-LastEditTime: 2021-06-19 11:58:27
+LastEditTime: 2021-06-29 12:46:15
 Description: Some pulic function
 '''
 
@@ -37,7 +37,10 @@ def deleteNote(source):
 @return {*} 返回包含所有自定义函数的列表
 '''
 def getAllFunctions(source_locs):
-    source_loc = source_locs.split("\n")
+    if isinstance(source_locs, str):
+        source_loc = source_locs.split("\n")
+    elif isinstance(source_locs, list):
+        source_loc = source_locs
     funcList = []
     for source in source_loc:
         try:
@@ -62,14 +65,15 @@ def getAllFunctions(source_locs):
         funcList = sorted(set(funcList))
     return funcList
 
-'''
-@description: 写一个生成初始种子的cpp文件，并编译和执行它
-@param {*} header_loc 列表，里面存储了所有头文件的路径
-@param {*} struct 用户所选择的结构体名称
-@param {*} structDict Ui_dialog_seed里的字典，其中存储了分析得到的结构体和它的成员变量的信息
-@return {*}
-'''
+
 def genSeed(header_loc, struct, structDict):
+    '''
+    @description: 写一个生成初始种子的cpp文件，并编译和执行它
+    @param {*} header_loc 列表，里面存储了所有头文件的路径
+    @param {*} struct 用户所选择的结构体名称
+    @param {*} structDict Ui_dialog_seed里的字典，其中存储了分析得到的结构体和它的成员变量的信息
+    @return {*}
+    '''
     # 先设置好相关的位置信息
     root = re.sub(header_loc[0].split("\\")[-1],"",header_loc[0]) + "\\in\\"
     if not os.path.exists(root):
@@ -107,14 +111,15 @@ def genSeed(header_loc, struct, structDict):
     for cmd in cmds:
         os.system(cmd)
 
-'''
-@description: 写一个mutate_instru.c, 并生成相应得.dll, 以便测试时进行变异操作和读取插桩变量的值
-@param {*} header_loc 列表, 里面存储了所有头文件得位置
-@param {*} struct 用户所选择得结构体名称
-@param {*} structDict 结构体字典
-@return {*}
-'''
+
 def genMutate(header_loc, struct, structDict):
+    '''
+    @description: 写一个mutate_instru.c, 并生成相应得.dll, 以便测试时进行变异操作和读取插桩变量的值
+    @param {*} header_loc 列表, 里面存储了所有头文件得位置
+    @param {*} struct 用户所选择得结构体名称
+    @param {*} structDict 结构体字典
+    @return {*}
+    '''
     # 先设置好相关的位置信息
     root = re.sub(header_loc[0].split("\\")[-1],"",header_loc[0]) + "\\in\\"
     if not os.path.exists(root):
@@ -165,7 +170,7 @@ def genMutate(header_loc, struct, structDict):
 import ctypes
 if __name__ == "__main__":
     MAIdll = ctypes.cdll.LoadLibrary("C:\\Users\\Radon\\Desktop\\fuzztest\\4th\\example\\in\\mutate_instru.dll")
-    temp = [102,0,33,92,90,0,0,0,168,53,129,105,243,233,100,0,96,0,0,0,54,39,0,0,107,0,0,0,44,0,0,0,39,16,0,0,76,0,0,0,107,0,0,0,0,0,0,0,8,0,0,0,0,0,0,0,0,0,64,0,116,45,1,108,117,1,71,42,1,60,39,1]
+    temp = [102,0,33,92,90,0,0,0,21,6,19,11,47,48,100,0,96,0,0,0,0,0,0,0,107,0,0,0,44,0,0,0,1,1,0,0,76,0,0,0,107,0,0,0,0,0,0,0,8,0,0,0,0,0,0,0,111,16,64,0,116,45,1,108,117,1,71,42,1,60,39,1]
     temp = bytes(temp)
     res = MAIdll.getInstrumentValue(temp)
     print(res)

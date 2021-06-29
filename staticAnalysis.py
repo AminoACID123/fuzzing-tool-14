@@ -86,68 +86,13 @@ def getAllVariablesName(source_loc):
             break
     return variables
 
-'''
-@description: 注意：结构名后不要加空格
-@param {*} header_loc
-@return {*}
-'''
-# def analyzeHeader(header_loc):
-#     brace = 0           # 花括号数量，用于判断在哪一级
-#     headerInfo = []     # headerInfo是一个二维列表，用于存储头文件中结构体的信息
-#     tempInfo = []       # headerInfo[x][0]表示第x个结构体名称, headerInfo[x][y]表示第y个成员名称
-#     internalStruct = ""
 
-#     # 判断形参是列表还是字符串
-#     if isinstance(header_loc,list):
-#         # 如果是列表的话递归分析头文件
-#         for header in header_loc:
-#             headerInfo.extend(analyzeHeader(header))
-#     else:
-#         # 如果是字符串的话分析当前头文件
-#         checkAlpha = re.compile(r"[A-Za-z]",re.S)
-#         try:
-#             f = open(header_loc)
-#             lines = f.readlines()
-#         except UnicodeDecodeError:
-#             f = open(header_loc,encoding="utf-8")
-#             lines = f.readlines()
-#         lines = public.deleteNote(lines)
-#         f.close()
-
-#         # 注意事项
-#         # 变量名后面如果接大括号的话两者之间不要有其他字符
-
-#         for line in lines:
-#             summary = False
-#             if "}" in line:
-#                 brace -= 1
-#                 if brace == 0:
-#                     summary = True
-#             if "#" in line or "(" in line:
-#                 continue
-#             if brace == 0 and len(re.findall(checkAlpha,line)) > 0:
-#                 structName = line.split(" ")[-1]
-#                 structName = re.sub("[^A-Za-z0-9_]","",structName)
-#                 tempInfo.append(structName)
-#             # if brace >= 1 and len(re.findall(checkAlpha,line)) > 0:
-#             if brace >= 1 and ";" in line:
-#                 memberName = line.split(";")[0].lstrip("\t")
-#                 memberName = internalStruct + memberName
-#                 tempInfo.append(memberName)
-#             if "{" in line:
-#                 brace += 1
-#             if summary:
-#                 tempInfo[0] = tempInfo.pop(-1)
-#                 headerInfo.append(tempInfo.copy())
-#                 tempInfo.clear()
-#     return headerInfo
-
-'''
-@description: 获取头文件中所有结构体的名称，header_loc是一个列表
-@param {*} header_loc 一个列表，里面存储了所有要解析的头文件的位置
-@return {*} 返回一个列表，列表里存储了所有结构体的名称
-'''
 def getAllStruct(header_loc):
+    '''
+    @description: 获取头文件中所有结构体的名称，header_loc是一个列表
+    @param {*} header_loc 一个列表，里面存储了所有要解析的头文件的位置
+    @return {*} 返回一个列表，列表里存储了所有结构体的名称
+    '''
     allStruct = []
     # 获取所有头文件中结构体的名称
     for header in header_loc:
@@ -161,15 +106,16 @@ def getAllStruct(header_loc):
     [result.append(s) for s in allStruct if not s in result]
     return result
 
-'''
-@description: 获取一个结构体的数据内容
-@param {*} header_loc 列表，其中存储了所有头文件的位置
-@param {*} struct 要检查的结构体名称
-@param {*} prefix 前缀，当成员变量是结构体的时候会用到
-@param {*} allStruct 列表，其中存储了头文件中所有结构体名称
-@return {*} 返回一个列表，里面存储了要检查的结构体的所有信息
-'''
+
 def getOneStruct(header_loc, struct, prefix, allStruct):
+    '''
+    @description: 获取一个结构体的数据内容
+    @param {*} header_loc 列表，其中存储了所有头文件的位置
+    @param {*} struct 要检查的结构体名称
+    @param {*} prefix 前缀，当成员变量是结构体的时候会用到
+    @param {*} allStruct 列表，其中存储了头文件中所有结构体名称
+    @return {*} 返回一个列表，里面存储了要检查的结构体的所有信息
+    '''
     structInfo = []
     for header in header_loc:
         ast = pycparser.parse_file(header,use_cpp=True,cpp_path='gcc',cpp_args=['-E', r'-Iutils/fake_libc_include'])
@@ -226,13 +172,14 @@ def getOneStruct(header_loc, struct, prefix, allStruct):
     [result.append(info) for info in structInfo if not info in result]
     return result
 
-'''
-@description: 分析内嵌结构体的数据
-@param {*} decls pycparser解析来的数据，里面存储了各种变量名，类型等
-@param {*} struct 内嵌结构体外一层的结构体的名称，类型是str
-@return {*} 返回内嵌结构体的成员变量列表
-'''
+
 def analyzeInternalStruct(decls, struct):
+    '''
+    @description: 分析内嵌结构体的数据
+    @param {*} decls pycparser解析来的数据，里面存储了各种变量名，类型等
+    @param {*} struct 内嵌结构体外一层的结构体的名称，类型是str
+    @return {*} 返回内嵌结构体的成员变量列表
+    '''
     internalInfoList = []
     for data in decls:
         try:
@@ -254,13 +201,14 @@ def analyzeInternalStruct(decls, struct):
                 print("error!")
     return internalInfoList
 
-'''
-@description: 通过pycparser获取AST分析头文件。
-              注意：pycparser只能分析头文件，分析c文件时会出错; 定义结构体时最好把结构体名写在大括号后面。
-@param {*} header_loc 头文件位置列表，可以是一个也可以是多个
-@return {*} 返回类型是列表内嵌元组，每个元组是一个结构体。元组第一个元素是结构体名称
-'''
+
 def analyzeHeader(header_loc):
+    '''
+    @description: 通过pycparser获取AST分析头文件。
+                注意：pycparser只能分析头文件，分析c文件时会出错; 定义结构体时最好把结构体名写在大括号后面。
+    @param {*} header_loc 头文件位置列表，可以是一个也可以是多个
+    @return {*} 返回类型是列表内嵌元组，每个元组是一个结构体。元组第一个元素是结构体名称
+    '''
     infoList = []
     for header in header_loc:
         ast = pycparser.parse_file(header,use_cpp=True,cpp_path='gcc',cpp_args=['-E', r'-Iutils/fake_libc_include'])
@@ -302,10 +250,6 @@ def analyzeHeader(header_loc):
             infoList.append(tuple(tempList))
     return infoList
 
-def test(header_loc):
-    for header in header_loc:
-        ast = pycparser.parse_file(header,use_cpp=True,cpp_path='gcc',cpp_args=['-E', r'-Iutils/fake_libc_include'])
-        print(ast)
 
 if __name__ == "__main__":
     source_loc = "C:\\Users\\Radon\\Desktop\\fuzztest\\main.c"

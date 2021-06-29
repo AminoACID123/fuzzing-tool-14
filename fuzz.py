@@ -16,8 +16,15 @@ from PyQt5.QtCore import pyqtSignal
 import callgraph as cg
 import instrument as instr
 import staticAnalysis as sa
+import public
+
 
 def mkdir(path):
+    '''
+    @description: 创建文件夹
+    @param {*} path 文件夹的路径
+    @return {*} True表示创建成功，False表示文件夹已存在，创建失败
+    '''
     path=path.strip()
     path=path.rstrip("\\")
     isExists=os.path.exists(path)
@@ -26,17 +33,14 @@ def mkdir(path):
         return True
     else:
         return False
-        
-def get_str_btw(s, f, b):
-    par = s.partition(f)
-    return (par[2].partition(b))[0][:]
 
-'''
-@description: 获取一个数的二进制中1所在的位置, 主要用于查看覆盖到了哪些点
-@param {*} num 数字, 结构体中插装变量返回的值
-@return {*}
-'''
+
 def getCoverNode(num):
+    '''
+    @description: 获取一个数的二进制中1所在的位置, 主要用于查看覆盖到了哪些点
+    @param {*} num 数字, 结构体中插装变量返回的值
+    @return {*}
+    '''
     cover = []
     coverNode = []
     loc = 0
@@ -48,6 +52,7 @@ def getCoverNode(num):
     global allNode
     for data in cover:
         coverNode.append(allNode[data])
+    coverNode.append("main")
     return coverNode
 
 '''
@@ -63,8 +68,6 @@ def loadData(fileName):
         data = line.split(',')
         elementList.append(data[0])
         elementList.append(data[1])
-        allNode.append(data[0])
-        allNode.append(data[1])
         elementList.append(float(1/int(data[2])))
         elementTuple = tuple(elementList)
         elementList.clear()
@@ -104,6 +107,12 @@ def getDistance_average(graph,nodeSet,target):
     G = nx.Graph()
     G.add_weighted_edges_from(graph)
     distance = 0
+    # try:
+    #     for node in nodeSet:
+    #         distance += nx.dijkstra_path_length(G,node,target)
+    #     distance = distance/len(nodeSet)
+    # except:
+    #     distance = 999.0
     for node in nodeSet:
         distance += nx.dijkstra_path_length(G,node,target)
     distance = distance/len(nodeSet)
@@ -140,18 +149,20 @@ def threadMonitor():
     prog = "C:\\Users\\Radon\\Desktop\\fuzztest\\4th\\example\\cppudptest\\getudp.py"
     out = getstatusoutput(prog)
     # print("getudp.py: ", out)
+    global returnUDPInfo
     returnUDPInfo = out[1]
 
-'''
-@description: 根据南京大学徐安孜同学的例子重新写了一下获取适应度的函数，但还有待补充的地方
-@param {*} testcase 需要发送的测试用例，是一个内部元素均为str的list
-@param {*} targetSet 目标集
-@param {*} program_loc 程序位置
-@param {*} callGraph 函数调用图，需要借此来计算测试用例和目标集之间的举例，从而计算适应度
-@param {*} maxTimeout 超时时间
-@return {*} 返回(测试用例, 距离, 适应度, 覆盖点, 是否触发缺陷, 是否超时)，返回结果是一个元组
-'''
+
 def getFitness(testcase, targetSet, program_loc, callGraph, maxTimeout, MAIdll):
+    '''
+    @description: 根据南京大学徐安孜同学的例子重新写了一下获取适应度的函数，但还有待补充的地方
+    @param {*} testcase 需要发送的测试用例，是一个内部元素均为str的list
+    @param {*} targetSet 目标集
+    @param {*} program_loc 程序位置
+    @param {*} callGraph 函数调用图，需要借此来计算测试用例和目标集之间的举例，从而计算适应度
+    @param {*} maxTimeout 超时时间
+    @return {*} 返回(测试用例, 距离, 适应度, 覆盖点, 是否触发缺陷, 是否超时)，返回结果是一个元组
+    '''
     # 先启动线程2，用于监控
     thread2 = threading.Thread(target = threadMonitor, name = "thread_monitor",)
     thread2.start()
@@ -183,21 +194,26 @@ def getFitness(testcase, targetSet, program_loc, callGraph, maxTimeout, MAIdll):
     # 分析缺陷，覆盖什么的代码，待补充
     # 获得覆盖的结点
     instrValue = MAIdll.getInstrumentValue(bytes(returnUDPInfo))
+    print("instrValue:", instrValue)
     coverNode = getCoverNode(instrValue)
     print("coverNode:",coverNode)
-    distance = getDistance_average(callGraph, coverNode, targetSet)
+    # 计算距离
+    distance = 0
+    for target in targetSet:
+        distance += getDistance_average(callGraph, coverNode, target)
     fitness = 1/distance
     crashResult = isCrash
     timeout = False
     return (testcase,distance,fitness,coverNode,crashResult,timeout)
 
-'''
-@description: 根据南京大学徐安孜同学写的例子对变异进行了改写，由于均是数字，所以做一下和数字有关的操作就好
-@param {*} testcase 传入的测试用例是内部元素均为str的list
-@param {*} mutateSavePath 变异测试用例的保存路径, 与原本流程不同, 在这里直接将变异后的测试用例保存到本地
-@return {*}
-'''
+
 def mutate(testcase, mutateSavePath, MAIdll):
+    '''
+    @description: 根据南京大学徐安孜同学写的例子对变异进行了改写，由于均是数字，所以做一下和数字有关的操作就好
+    @param {*} testcase 传入的测试用例是内部元素均为str的list
+    @param {*} mutateSavePath 变异测试用例的保存路径, 与原本流程不同, 在这里直接将变异后的测试用例保存到本地
+    @return {*}
+    '''
     # 先把测试用例转为内部元素均为int的list
     testcase = [int(data) for data in testcase]
     # 形参需要转换为bytes类型才能正确传递给dll
@@ -249,7 +265,7 @@ def CMutate(testcase,maxTCLen):
     res = ctypes.string_at(res)
     res = res.decode("utf8")
     print("res:",res)
-    return res 
+    return res
 
 def generateReport(source_loc,fuzzInfoDict):
     basic_loc = re.sub(source_loc.split("\\")[-1],"",source_loc)
@@ -282,17 +298,18 @@ def generateReport(source_loc,fuzzInfoDict):
     reportContent += "保存的超时测试用例位置: \t"+basic_loc+"out\\timeout\n"
     f = open(report_loc,mode="w")
     f.write(reportContent)
-    f.close()    
+    f.close()
 
-'''
-@description: 模糊测试的函数, 是该项目核心的函数之一
-@param {*} source_loc 列表, 其中存储了所有C文件的位置
-@param {*} ui 主页面
-@param {*} uiFuzz 模糊测试页面
-@param {*} fuzzThread 模糊测试页面新开的测试线程, 单线程的话在测试期间会卡住
-@return {*}
-'''
+
 def fuzz(source_loc,ui,uiFuzz,fuzzThread):
+    '''
+    @description: 模糊测试的函数, 是该项目核心的函数之一
+    @param {*} source_loc 列表, 其中存储了所有C文件的位置
+    @param {*} ui 主页面
+    @param {*} uiFuzz 模糊测试页面
+    @param {*} fuzzThread 模糊测试页面新开的测试线程, 单线程的话在测试期间会卡住
+    @return {*}
+    '''
     for source in source_loc:
         if not os.path.exists(source):
             print(source)
@@ -300,14 +317,23 @@ def fuzz(source_loc,ui,uiFuzz,fuzzThread):
             return "source not exist!"
 
     now_loc = re.sub(source_loc[0].split("\\")[-1],"",source_loc[0])      # 当前所在目录
-    instrument_loc = now_loc + "instrument.c"
     output_loc = now_loc                                            # 输出exe和obj的位置
     program_loc = now_loc + "instrument.exe"    #可执行文件位置
     seed_loc = now_loc + "in\\seed.txt"     #初始测试用例位置
     graph_loc = now_loc + "graph_cg.txt"   #调用图位置
+    # 插装后的文件位置，因为是多文件，所以这里用了列表
+    instrument_loc = []
 
-    # 待修改
-    # instr.instrument(source_loc,instrument_loc,output_loc) 
+    # 因为要多文件编译，所以记录一下每个文件的位置，以便生成插装的源文件
+    for source in source_loc:
+        sourceName = source.split("\\")[-1]
+        instrument_loc.append(re.sub(sourceName, "ins_" + sourceName, source))
+
+    # 获取插装变量的名字
+    instrument_var = open(now_loc + "in\\instrument.txt").readline()
+    instrument_var = instrument_var.split(" ")[-1].split(":")[0].rstrip("\n")
+    instr.instrument(source_loc, instrument_loc, output_loc, instrument_var)
+    # 创建函数调用图
     cg.createCallGraph(source_loc,graph_loc)
 
     # 加载所需的DLL文件
@@ -345,9 +371,6 @@ def fuzz(source_loc,ui,uiFuzz,fuzzThread):
         return
     targetSet = targetSet.split("\n")
     print("targetSet:",targetSet)
-    # print(targetSet)
-    # cg.createCallGraph(source_loc,graph_loc)
-    # instr.instrument(source_loc,instrument_loc,output_loc) 
 
     start = time.time()
     end = time.time()
@@ -356,6 +379,7 @@ def fuzz(source_loc,ui,uiFuzz,fuzzThread):
     # 待修改
     callGraph = loadData(graph_loc)
     global allNode
+    allNode = public.getAllFunctions(source_loc)
     allNode = sorted(set(allNode),key=allNode.index)
     print("allNode:", allNode)
 
@@ -496,7 +520,7 @@ crashes = 0             # 统计触发了多少次缺陷
 returnUDPInfo = []      # 存储发送回来的UDP数据包
 
 def threadReceiver():
-    prog = "C:\\Users\\Radon\\Desktop\\fuzztest\\4th\\example\\main.exe"
+    prog = "C:\\Users\\Radon\\Desktop\\fuzztest\\4th\\example\\instrument.exe"
     out = getstatusoutput(prog)
     # print("main.exe: " + str(out[0]))
 
@@ -520,7 +544,7 @@ def sendData():
     host = socket.gethostname()
     port = 8888
     s.connect((host, port))
-    data = bytes([204,204,204,204,204,204,204,204,204,1,1,1,1,1,1,0,204,204,204,204,0,0,204,204,204,204,204,204,204,204,204,204,1,1,204,204,204,204,204,204,204,204,204,204,2,2,204,204,204,204,204,204,204,204,204,204,204,204,1,204,204,0,1,1,1,2,2,0])
+    data = bytes([102,0,33,92,90,0,0,0,21,6,19,11,47,48,100,0,96,0,0,0,0,0,0,0,107,0,0,0,44,0,0,0,1,1,0,0,76,0,0,0,107,0,0,0,0,0,0,0,8,0,0,0,0,0,0,0,0,0,64,0,116,45,1,108,117,1,71,42,1,60,39,1])
     #data = bytes([10,20,204,204,30,40,50,204])
     s.send(data)
     s.close()
@@ -537,13 +561,12 @@ def sendData():
     print(temp)
     print(returnUDPInfo)
     print("length: ", len(returnUDPInfo))
-    
+
 
 if __name__ == "__main__":
-    # source_loc = "C:\\Users\\Radon\\Desktop\\fuzztest\\main.c"
+    # source_loc = "C:\\Users\\Radon\\Desktop\\fuzztest\\4th\\example\\main.cpp".split("\n")
     # ui = "111"
     # uiFuzz = "222"
     # fuzzThread = "fuzzThread"
     # fuzz(source_loc,ui,uiFuzz,fuzzThread)
-    # sendData()
-    print(mutate(["204","204","1","2","3"]))
+    sendData()

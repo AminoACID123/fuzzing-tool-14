@@ -1,7 +1,7 @@
 '''
 Author: 金昊宸
 Date: 2021-04-22 14:26:43
-LastEditTime: 2021-06-16 12:30:14
+LastEditTime: 2021-06-29 12:43:27
 Description:
 '''
 # -*- coding: utf-8 -*-
@@ -275,28 +275,30 @@ class Ui_Dialog(object):
     def getRanNum(self,lower,upper):
         return int(round(random.uniform(lower, upper), 2))
 
-    '''
-    @description: 根据变量的名称获取它的位大小
-    @param {*} self
-    @param {*} variable 变量的名称
-    @return {*} 返回值是一个int类型的数值，表示了它占多少位
-    '''
+
     def getBitsize(self,variable):
+        '''
+        @description: 根据变量的名称获取它的位大小
+        @param {*} self
+        @param {*} variable 变量的名称
+        @return {*} 返回值是一个int类型的数值，表示了它占多少位
+        '''
         if ":" in variable:
             return int(re.sub(" ", "", variable.split(":")[1]))
         else:
             return 7
-        
-    '''
-    @description:  根据传入的路径分析头文件，或直接读取现有的json文件
-    @param {*} self
-    @param {*} header_loc 列表，其中存储了所有头文件的位置
-    @param {*} readJSON 是否读取已有的json
-    @param {*} struct 选择的结构体名称
-    @param {*} allStruct 列表，存储了所有结构体的名称
-    @return {*}
-    '''
+
+
     def initStructDict(self, header_loc, readJSON, struct, allStruct):
+        '''
+        @description:  根据传入的路径分析头文件，或直接读取现有的json文件
+        @param {*} self
+        @param {*} header_loc 列表，其中存储了所有头文件的位置
+        @param {*} readJSON 是否读取已有的json
+        @param {*} struct 选择的结构体名称
+        @param {*} allStruct 列表，存储了所有结构体的名称
+        @return {*}
+        '''
         self.header_loc = header_loc
         self.struct = struct
         global structDict
@@ -318,13 +320,14 @@ class Ui_Dialog(object):
             structDict[struct] = tempDict
         # 设置Table
         self.setTableContent(structDict)
-    
-    '''
-    @description: 用一个文件存储哪些字段变异，哪些字段不变异，文件类型是JSON还是TXT?
-    @param {*} self
-    @return {*}
-    '''
+
+
     def genMutate(self):
+        '''
+        @description: 用一个文件存储哪些字段变异，哪些字段不变异，文件类型是JSON还是TXT?
+        @param {*} self
+        @return {*}
+        '''
         # 存成TXT试试
         for key in structDict:
             struct = key
@@ -334,12 +337,13 @@ class Ui_Dialog(object):
         except BaseException as e:
             print("mutate_instru.c生成失败: ", e)
 
-    '''
-    @description: 将插桩的变量写入instrument.txt
-    @param {*} self
-    @return {*}
-    '''
+
     def genInstrument(self):
+        '''
+        @description: 将插桩的变量写入instrument.txt
+        @param {*} self
+        @return {*}
+        '''
         for key in structDict:
             struct = key
         # 查看哪个变量是插桩变量
@@ -354,12 +358,13 @@ class Ui_Dialog(object):
         except:
             print("instrument.txt保存失败!")
 
-    '''
-    @description: 根据输入的内容，生成种子测试用例seed.txt
-    @param {*} self
-    @return {*}
-    '''
+
     def genSeed(self):
+        '''
+        @description: 根据输入的内容，生成种子测试用例seed.txt
+        @param {*} self
+        @return {*}
+        '''
         for key in structDict:
             struct = key
         public.genSeed(self.header_loc, struct, structDict)
