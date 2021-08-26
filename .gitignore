@@ -1,0 +1,13 @@
+__pycache__/
+AIFuzz/*
+example/
+.idea/
+.vscode/
+*.json
+*.exe
+.VSCodeCounter/
+venv/
+cmake-build-debug/
+CMakeLists.txt
+client/util/checkCodeLibDir/checkCodeLib/main.c
+temp.py
